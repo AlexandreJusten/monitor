@@ -1,0 +1,47 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import sqlite3
+import os
+
+def verificar_backup(caminho_arquivo):
+    if not os.path.exists(caminho_arquivo):
+        return "Arquivo não encontrado.", None
+
+    try:
+        conn = sqlite3.connect(f'file:{caminho_arquivo}?mode=ro', uri=True)
+        cursor = conn.cursor()
+
+       
+        cursor.execute("SELECT MAX(created_at) FROM sua_tabela")
+        resultado = cursor.fetchone()
+        conn.close()
+
+        if resultado and resultado[0]:
+            return "Backup íntegro.", resultado[0]
+        else:
+            return "Backup íntegro, mas sem registros encontrados.", None
+
+    except sqlite3.DatabaseError as e:
+        return f"Erro ao abrir o banco: {e}", None
+
+def selecionar_arquivo():
+    caminho = filedialog.askopenfilename(filetypes=[("Banco de Dados SQLite", "*.db *.sqlite *.sqlite3")])
+    if caminho:
+        status, data = verificar_backup(caminho)
+        resultado = status
+        if data:
+            resultado += f"\nÚltima inserção: {data}"
+        messagebox.showinfo("Resultado", resultado)
+
+
+app = tk.Tk()
+app.title("Verificador de Backup SQLite")
+app.geometry("400x200")
+
+label = tk.Label(app, text="Verificador de Backup", font=("Arial", 14))
+label.pack(pady=20)
+
+botao = tk.Button(app, text="Selecionar Arquivo de Backup", command=selecionar_arquivo)
+botao.pack(pady=10)
+
+app.mainloop()
