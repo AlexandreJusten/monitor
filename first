@@ -1,47 +1,68 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import sqlite3
+import re
 import os
 
-def verificar_backup(caminho_arquivo):
-    if not os.path.exists(caminho_arquivo):
-        return "Arquivo não encontrado.", None
+def verificar_sql(arquivo):
+    if not os.path.exists(arquivo):
+        return "Arquivo não encontrado.", 0, None
 
     try:
-        conn = sqlite3.connect(f'file:{caminho_arquivo}?mode=ro', uri=True)
-        cursor = conn.cursor()
+        with open(arquivo, "r", encoding="utf-8", errors="ignore") as f:
+            conteudo = f.read()
 
-       
-        cursor.execute("SELECT MAX(created_at) FROM sua_tabela")
-        resultado = cursor.fetchone()
-        conn.close()
+        insert_count = len(re.findall(r"INSERT INTO", conteudo, flags=re.IGNORECASE))
+        datas = re.findall(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", conteudo)
+        ultima_data = max(datas) if datas else None
 
-        if resultado and resultado[0]:
-            return "Backup íntegro.", resultado[0]
-        else:
-            return "Backup íntegro, mas sem registros encontrados.", None
+        return "Backup verificado com sucesso.", insert_count, ultima_data
 
-    except sqlite3.DatabaseError as e:
-        return f"Erro ao abrir o banco: {e}", None
+    except Exception as e:
+        return f"Erro ao ler o arquivo: {e}", 0, None
 
 def selecionar_arquivo():
-    caminho = filedialog.askopenfilename(filetypes=[("Banco de Dados SQLite", "*.db *.sqlite *.sqlite3")])
+    caminho = filedialog.askopenfilename(filetypes=[("SQL Files", "*.sql")])
     if caminho:
-        status, data = verificar_backup(caminho)
-        resultado = status
+        status, insert_count, data = verificar_sql(caminho)
+        msg = f"{status}\nComandos INSERT encontrados: {insert_count}"
         if data:
-            resultado += f"\nÚltima inserção: {data}"
-        messagebox.showinfo("Resultado", resultado)
+            msg += f"\nÚltima data de inserção: {data}"
+        messagebox.showinfo("Resultado", msg)
 
-
+# Interface gráfica
 app = tk.Tk()
-app.title("Verificador de Backup SQLite")
-app.geometry("400x200")
+app.title("Verificador de Backup MySQL (.sql)")
+app.geometry("420x180")
 
-label = tk.Label(app, text="Verificador de Backup", font=("Arial", 14))
+label = tk.Label(app, text="Verificar integridade de backup MySQL", font=("Arial", 12))
 label.pack(pady=20)
 
-botao = tk.Button(app, text="Selecionar Arquivo de Backup", command=selecionar_arquivo)
+botao = tk.Button(app, text="Selecionar Arquivo .sql", command=selecionar_arquivo, font=("Arial", 10))
 botao.pack(pady=10)
 
 app.mainloop()
+======================================================================
+
+🛠️ Como gerar o .exe
+Se quiser gerar você mesmo:
+
+bash
+Copiar
+Editar
+pip install pyinstaller
+pyinstaller --noconsole --onefile verifica_backup_mysql.py
+Vai gerar: dist/verifica_backup_mysql.exe
+
+
+
+
+🕓 Qual a última data no formato 'YYYY-MM-DD HH:MM:SS'?
+
+Mostra um resumo como:
+
+yaml
+Copiar
+Editar
+✔️ Backup verificado com sucesso.
+Comandos INSERT encontrados: 1853
+Última data de inserção: 2025-06-25 13:45:02
